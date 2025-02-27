@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { checkOrRegisterUser } from "./chatService";
-import ChatWindow from "./ChatWindow";
 import socket from "../socket";
 import { useNavigate } from "react-router-dom";
-import { ToastContainer, toast } from 'react-toastify';
+import toast, { Toaster } from 'react-hot-toast';
 
 function ChatHandler({ onClose }) {
   
@@ -13,29 +12,35 @@ function ChatHandler({ onClose }) {
   const [user, setUserData] = useState();
   const navigate = useNavigate();
 
-  
-
   const handleLogin = async (isGuest) => {
     setLoading(true);
-    const user = await checkOrRegisterUser(isGuest ? null : userName , isGuest);
-    setLoading(false);
+    try {
+      const user = await checkOrRegisterUser(isGuest ? null : userName, isGuest);
+      setLoading(false);
   
-    console.log("User Data from API:", user); // Debugging
-    setUserData(user);
-
-    if (user && user.username) {
-      sessionStorage.setItem("user", JSON.stringify(user)); 
-      sessionStorage.setItem("username", user.username);
-      sessionStorage.setItem("id",user.id)
+      console.log("User Data from API:", user); // Debugging
   
-      socket.emit("registerClient", { username: user.username });
-      toast.success("Login successful");
-      onClose()
-      navigate("/user-chat", { state: { user } });
-    } else {
-      toast.error("Login failed. Please try again.");
+      if (user && user.username) {
+        setUserData(user);
+        sessionStorage.setItem("user", JSON.stringify(user)); 
+        sessionStorage.setItem("username", user.username);
+        sessionStorage.setItem("id", user.id);
+  
+        socket.emit("registerClient", { username: user.username });
+        socket.emit("newChatRequest", { username: user.username });
+        
+        toast.success("Login successful");
+        onClose();
+        navigate("/", { state: { user } });
+      } else {
+        throw new Error("Invalid username or user not found");
+      }
+    } catch (error) {
+      setLoading(false);
+      console.error("Login Error:", error);
+      toast.error("Login failed. Invalid username or user not found.");
     }
-  };
+  };  
 
   useEffect(() => {
     socket.on("onlineAgents", (agents) => {

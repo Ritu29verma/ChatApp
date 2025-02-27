@@ -1,19 +1,18 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import LoginPage from "./Pages/LoginPage";
 import ChatHandlerAgent from "./Pages/ChatHandlerAgent";
-import { ToastContainer } from 'react-toastify';
+import { Toaster } from "react-hot-toast";
 import AdminChatWindow from "./Pages/ChatWindowAgent";
 import ChatWindow from "./Pages/ChatWindow";
 
 function App() {
   return (
     <Router>
-      <ToastContainer  autoClose={600} />
+       <Toaster position="top-center" reverseOrder={false} />
       <Routes>
-        <Route path="/" element={<h1 className="text-center text-3xl font-bold mt-10">Welcome to Chat Application</h1>} />
+        {/* <Route path="/" element={<h1 className="text-center text-3xl font-bold mt-10">Welcome to Chat Application</h1>} /> */}
         <Route path="/login" element={<ChatHandlerAgent/>} />
         <Route path="/agent-chat" element={<AdminChatWindow/>} />
-        <Route path="/user-chat" element={<ChatWindow/>} />
+        <Route path="/" element={<ChatWindow/>} />
       </Routes>
     </Router>
   );

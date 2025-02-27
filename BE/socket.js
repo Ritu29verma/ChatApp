@@ -5,6 +5,8 @@ import Agent from './models/Agent.js';
 
 const onlineUsers = new Map();
 const onlineAgents = new Map();
+const activeSessions = new Map();
+const pendingChatRequests = new Map();
 
 export const chatSocket = () => {
   io.on("connection", (socket) => {
@@ -16,8 +18,9 @@ export const chatSocket = () => {
       onlineUsers.set(socket.id, { username, role: "user" });
       console.log("📌 Current Online Users:", Array.from(onlineUsers.entries()));
       console.log("Current Online Agents:",Array.from(onlineAgents.entries()))
-      io.emit("onlineUsers", Array.from(onlineUsers.values())); // Update agents
-      io.emit("onlineAgents", Array.from(onlineAgents.values())); // Update users
+      io.emit("onlineUsers", Array.from(onlineUsers.values())); // Update users
+      io.emit("onlineAgents", Array.from(onlineAgents.values())); // Update agents
+      checkForAvailableAgents(username);
     });
 
     // Register agents
@@ -26,34 +29,116 @@ export const chatSocket = () => {
       onlineAgents.set(socket.id, { username, role: "agent" });
       console.log("📌 Current Online Users:", Array.from(onlineUsers.entries()));
       console.log("📌 Current Online Agents:", Array.from(onlineAgents.entries()));
-      io.emit("onlineAgents", Array.from(onlineAgents.values())); // Update users
-      io.emit("onlineUsers", Array.from(onlineUsers.values())); // Update agents
-    });
+      io.emit("onlineAgents", Array.from(onlineAgents.values())); // Update agents
+      io.emit("onlineUsers", Array.from(onlineUsers.values())); // Update users
+    
+     // Send only unaccepted chat requests to the newly logged-in agent
+     const unacceptedRequests = Array.from(pendingChatRequests.keys()).filter(
+      (clientUsername) => !pendingChatRequests.get(clientUsername)
+    );
 
-    // Handle client disconnecting
-    socket.on("clientOffline", ({ username }) => {
-      for (const [socketId, user] of onlineUsers.entries()) {
-        if (user.username === username) {
-          onlineUsers.delete(socketId);
-          break;
-        }
+    if (unacceptedRequests.length > 0) {
+      unacceptedRequests.forEach((clientUsername) => {
+        io.to(socket.id).emit("newChatRequest", { clientUsername });
+      });
+    }
+  });
+
+    socket.on("newChatRequest", ({ clientUsername }) => {
+      checkForAvailableAgents(clientUsername);
+      if (!pendingChatRequests.has(clientUsername)) {
+        pendingChatRequests.set(clientUsername, false); // Mark as unaccepted
+
+        // Notify all online agents about the new request
+        Array.from(onlineAgents.keys()).forEach((agentSocketId) => {
+          io.to(agentSocketId).emit("newChatRequest", { clientUsername });
+        });
       }
-      console.log("🛑 Client went offline:", username);
-      io.emit("onlineUsers", Array.from(onlineUsers.values()));
     });
 
-    // Handle agent disconnecting
-    socket.on("AgentOffline", ({ username }) => {
-      for (const [socketId, user] of onlineAgents.entries()) {
-        if (user.username === username) {
-          onlineAgents.delete(socketId);
-          break;
-        }
+    function checkForAvailableAgents(clientUsername) {
+      const availableAgents = Array.from(onlineAgents.entries()).filter(
+        ([_, agent]) => !activeSessions.has(agent.username)
+      );
+      if (availableAgents.length === 0) {
+        console.log("❌ No available agents for:", clientUsername);
+        return;
       }
-      console.log("🛑 Agent went offline:", username);
-      io.emit("onlineAgents", Array.from(onlineAgents.values()));
+      availableAgents.forEach(([agentSocketId, agent]) => {
+        io.to(agentSocketId).emit("newChatRequest", { clientUsername });
+      });
+    }
+
+    socket.on("acceptChat", ({ agentUsername, clientUsername }) => {
+      if (pendingChatRequests.has(clientUsername) && !pendingChatRequests.get(clientUsername)) {
+        pendingChatRequests.set(clientUsername, true); 
+      const clientEntry = [...onlineUsers.entries()].find(([_, user]) => user.username === clientUsername);
+      if (clientEntry) {
+        const [clientSocketId] = clientEntry;
+
+         // ✅ Remove from pending requests if it was stored
+         if (pendingChatRequests.has(clientUsername)) {
+          pendingChatRequests.delete(clientUsername); // Correct way to remove from Map
+        }        
+
+        // Store session correctly
+        activeSessions.set(clientUsername, {
+          agent: agentUsername,
+          client: clientUsername,
+          agentSocketId: socket.id,
+          clientSocketId: clientSocketId
+        });
+
+        console.log("✅ Chat Accepted - Session stored:", activeSessions.get(clientUsername));
+
+        // Notify both parties
+        io.to(clientSocketId).emit("chatAccepted", { agentUsername });
+        io.to(socket.id).emit("chatAccepted", { clientUsername });
+        console.log(`📢 Emitting chatRequestHandled for Client: ${clientUsername}, Agent: ${agentUsername}`);
+       io.emit("chatRequestHandled", { clientUsername, agentUsername });
+      } else {
+        console.log(`⚠️ Client ${clientUsername} not found for chat.`);
+      }}
     });
 
+    socket.on("denyChat", ({ clientUsername }) => {
+      console.log(`🚫 Agent denied chat request from ${clientUsername}`);
+    
+      // Find the client's socket ID
+      const clientEntry = [...onlineUsers.entries()].find(([_, user]) => user.username === clientUsername);
+      
+      if (clientEntry) {
+        const [clientSocketId] = clientEntry;
+        io.to(clientSocketId).emit("chatDenied", { message: "Your chat request was denied." });
+        console.log(`🔴 Notified ${clientUsername} about denial`);
+      } else {
+        console.log(`⚠️ Client ${clientUsername} not found`);
+      }
+    
+      // ✅ Emit event back to the denying agent
+      io.to(socket.id).emit("chatDeniedByAgent", { clientUsername });
+    }); 
+
+    socket.on("endChat", ({ agentUsername, clientUsername }) => {
+      console.log("End Chat requested by:", { agentUsername, clientUsername });
+    
+      const session = activeSessions.get(clientUsername); // ✅ Find session by clientUsername
+    
+      if (session) {
+        activeSessions.delete(clientUsername); // ✅ Delete session using clientUsername
+    
+        io.to([...onlineUsers.entries()].find(([_, u]) => u.username === session.client)?.[0])
+          .emit("chatEnded", { session });
+    
+        io.to([...onlineAgents.entries()].find(([_, a]) => a.username === session.agent)?.[0])
+          .emit("chatEnded", { session });
+    
+        console.log("✅ Chat session ended successfully:", session);
+      } else {
+        console.error("⚠️ No active session found for client:", clientUsername);
+      }
+    });
+    
     // Send Message
     socket.on("sendMessage", async ({ sender, receiver, text, timestamp, role }) => {
       console.log("📨 Received sendMessage event:", { sender, receiver, text, timestamp, role });
@@ -139,6 +224,30 @@ export const chatSocket = () => {
       }
       console.log(`🛑 ${user.username} stopped typing.`);
       socket.broadcast.emit("stopped-typing", { user });
+    });
+
+        // Handle client disconnecting
+    socket.on("clientOffline", ({ username }) => {
+      for (const [socketId, user] of onlineUsers.entries()) {
+        if (user.username === username) {
+          onlineUsers.delete(socketId);
+          break;
+        }
+      }
+      console.log("🛑 Client went offline:", username);
+      io.emit("onlineUsers", Array.from(onlineUsers.values()));
+    });
+
+    // Handle agent disconnecting
+    socket.on("AgentOffline", ({ username }) => {
+      for (const [socketId, user] of onlineAgents.entries()) {
+        if (user.username === username) {
+          onlineAgents.delete(socketId);
+          break;
+        }
+      }
+      console.log("🛑 Agent went offline:", username);
+      io.emit("onlineAgents", Array.from(onlineAgents.values()));
     });
 
     // Handle disconnect

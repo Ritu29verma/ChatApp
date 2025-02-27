@@ -86,7 +86,7 @@ function ChatHandlerAgent() {
             {loading ? "Logging in..." : "Login"}
           </button>
 
-          <div className="mt-4 text-gray-600">Or</div>
+          {/* <div className="mt-4 text-gray-600">Or</div>
 
           <button
             onClick={() => handleLogin(true)}
@@ -94,7 +94,7 @@ function ChatHandlerAgent() {
             disabled={loading}
           >
             {loading ? "Logging in..." : "Login as Guest"}
-          </button>
+          </button> */}
         </div>
       </div>
 

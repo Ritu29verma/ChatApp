@@ -1,21 +1,23 @@
 import { useState } from "react";
 import { FiMenu, FiX, FiLogOut } from "react-icons/fi";
+import socket from "../../socket"
 
-const AdminNavbar = ({ agent, onLogout }) => {
+const Navbar = ({handleLogout, currentUser}) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  
 
   return (
-    <nav className="bg-[#7209B7] text-white p-4 flex justify-between items-center shadow-md relative">
-      {/* Left Side: Admin Logo */}
-      <h1 className="text-xl font-bold">CHATIFY ADMIN</h1>
+    <nav className="bg-[#7209B7] text-white p-4 flex justify-between items-center shadow-md">
+      {/* Left Side: Logo */}
+      <h1 className="text-xl font-bold">CHATIFY</h1>
 
       {/* Right Side (Desktop) */}
       <div className="hidden sm:flex items-center space-x-4">
-        {agent?.username && <span className="font-semibold">{agent.username}</span>}
-        {agent?.username && (
+        {currentUser && <span className="font-semibold">{currentUser}</span>}
+        {currentUser && (
           <button
             className="bg-red-600 px-3 py-1 rounded-lg hover:bg-red-700 flex items-center"
-            onClick={onLogout}
+            onClick={handleLogout}
           >
             <FiLogOut className="mr-1" /> Logout
           </button>
@@ -32,11 +34,11 @@ const AdminNavbar = ({ agent, onLogout }) => {
       {/* Mobile Dropdown Menu */}
       {menuOpen && (
         <div className="absolute top-14 right-4 bg-white text-black shadow-lg rounded-lg p-3 flex flex-col space-y-2 sm:hidden">
-          {agent?.username && <span className="font-semibold">{agent.username}</span>}
-          {agent?.username && (
+          {currentUser && <span className="font-semibold">{currentUser}</span>}
+          {currentUser && (
             <button
               className="bg-red-600 px-3 py-1 rounded-lg hover:bg-red-700 flex items-center text-white"
-              onClick={onLogout}
+              onClick={handleLogout}
             >
               <FiLogOut className="mr-1" /> Logout
             </button>
@@ -47,4 +49,4 @@ const AdminNavbar = ({ agent, onLogout }) => {
   );
 };
 
-export default AdminNavbar;
+export default Navbar;
