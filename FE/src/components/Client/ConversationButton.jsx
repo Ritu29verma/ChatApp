@@ -6,7 +6,7 @@ function ConversationButton({ currentUser, setShowStartConversation, showStartCo
 
   const handleStartNewChat = () => {
     setIsClicked(true); // Start animation
-    socket.emit("newChatRequest", { clientUsername: currentUser });
+    socket.emit("newChatRequest", { clientUsername: currentUser.username });
 
     setTimeout(() => {
       setShowStartConversation(false);
