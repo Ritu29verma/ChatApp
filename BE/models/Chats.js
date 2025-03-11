@@ -18,12 +18,12 @@ const Chat = sequelize.define('Chat', {
     allowNull: false,
   },
   userId: {
-    type: DataTypes.STRING,  // ✅ Changed from INTEGER to STRING
+    type: DataTypes.INTEGER,  // Change from STRING to INTEGER
     allowNull: true,
   },
   agentId: {
-    type: DataTypes.STRING,  // ✅ Changed from INTEGER to STRING
-    allowNull: true,  // An agent may not always be involved
+    type: DataTypes.INTEGER,  // Change from STRING to INTEGER
+    allowNull: true,
   },
 }, {
   timestamps: true,
