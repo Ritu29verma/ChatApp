@@ -17,6 +17,9 @@ function AdminChatWindow({ onClose }) {
   const [chatRequests, setChatRequests] = useState([]);
   const [isChatActive, setIsChatActive] = useState(false); 
   const [acceptedRequests, setAcceptedRequests] = useState([]);
+  const [typingUser, setTypingUser] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [newMessage, setNewMessage] = useState("");
   const location = useLocation();
   const agent = location.state?.agent || null;
   console.log("Received Agent Data in ChatWindowAgent:", agent);
@@ -87,6 +90,43 @@ function AdminChatWindow({ onClose }) {
     }
   }, [selectedUser, agent]);
 
+    // Debounce Typing Event
+    useEffect(() => {
+      let typingTimer;
+      if (newMessage.trim() === "") {
+        socket.emit("stopped-typing", { user: agent });
+      } else {
+        typingTimer = setTimeout(() => {
+          socket.emit("stopped-typing", { user: agent });
+        }, 600);
+      }
+      return () => clearTimeout(typingTimer);
+    }, [newMessage, agent]);
+  
+    useEffect(() => {
+      if (!socket) {
+        console.log("Socket not available");
+        return;
+      }
+  
+      socket.on("typing", (data) => {
+        console.log("Typing event from:", data.user.username);
+        setTypingUser(data.user.username);
+        setIsTyping(true);
+      });
+  
+      socket.on("stopped-typing", () => {
+        console.log("Stopped typing event");
+        setTypingUser("");
+        setIsTyping(false);
+      });
+  
+      return () => {
+        socket.off("typing");
+        socket.off("stopped-typing");
+      };
+    }, [socket]);
+
   useEffect(() => {
     socket.on("newChatRequest", ({ clientUsername }) => {
       setChatRequests((prevRequests) => {
@@ -131,6 +171,7 @@ function AdminChatWindow({ onClose }) {
     socket.emit("acceptChat", { agentUsername : agent.username, clientUsername });
     setChatRequests((prev) => prev.filter((user) => user !== clientUsername));
     setAcceptedRequests((prev) => [...prev, clientUsername]);
+    setSelectedUser({ username: clientUsername }); 
     setIsChatActive(true);
   };
 
@@ -157,7 +198,14 @@ function AdminChatWindow({ onClose }) {
       socket.off("chatDeniedByAgent");
     };
   }, []);  
-  
+
+  useEffect(() => {
+    console.log("🔔 isChatActive changed:", isChatActive);
+    if (isChatActive && selectedUser) {
+        console.log("🎉 Opening Chat Window for:", selectedUser);
+    }
+}, [isChatActive, selectedUser]); // ✅ Watch both `isChatActive` and `selectedUser`
+
 
   return (
     <div className="h-screen bg-[#E7DBEF] md:flex-row">
@@ -165,7 +213,8 @@ function AdminChatWindow({ onClose }) {
          <div className=" flex flex-1 overflow-hidden md:flex-row md:space-x-4 mt-1 p-4 ">
          {!isChatActive && chatRequests.length > 0 && (
           <ChatRequestModal 
-            requests={chatRequests.filter(client => !acceptedRequests.includes(client))} 
+            // requests={chatRequests.filter(client => !acceptedRequests.includes(client))} 
+            requests = {chatRequests}
             onAccept={handleAcceptChat} 
             onDeny={handleDenyChat} 
           />
@@ -177,7 +226,13 @@ function AdminChatWindow({ onClose }) {
         <div className="bg-white max-h-[calc(100vh-100px)] flex-grow shadow-lg rounded-lg flex flex-col flex-1 w-full md:w-2/3">
          <ChatHeader selectedUser={selectedUser} onClose={onClose} setSelectedUser={setSelectedUser}/>
           <MessageList messages={messages} />
-          <MessageInput agent={agent} selectedUser={selectedUser} setMessages={setMessages} />
+          {/* {isTyping && typingUser && typingUser !== agent.username && (
+  <div className="absolute bottom-40 left-4 text-gray-500 text-sm italic">
+    {typingUser} is typing...
+  </div>
+    )} */}
+
+          <MessageInput agent={agent} selectedUser={selectedUser} setMessages={setMessages} newMessage={newMessage} setNewMessage={setNewMessage} setTypingUser={setTypingUser} setIsTyping={setIsTyping}/>
           {selectedUser && (
          <button className="bg-red-500 text-white p-2 m-2 rounded" onClick={handleEndChat}>
          End Chat

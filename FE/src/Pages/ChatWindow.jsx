@@ -292,24 +292,31 @@ const ChatWindow = ({ onClose }) => {
       {/* Main Chat Window */}
       <div className="max-h-[calc(100vh-100px)] w-full md:w-10/12 flex flex-col items-center justify-center">
         {selectedAgent ? (
-          <div className="bg-white m-2 max-h-[calc(100vh-100px)] shadow-lg rounded-lg flex flex-col w-full md:w-2/3 z-10">
+          <div className="bg-white max-h-[calc(100vh-100px)] shadow-lg rounded-lg flex flex-col w-full md:w-2/3 z-10">
             <ChatHeader
               selectedAgent={selectedAgent}
               setSelectedAgent={setSelectedAgent}
               onClose={onClose}
             />
-            <MessageList messages={messages}/>
-            {isTyping && typingUser && (
-        <div className="absolute bottom-16 left-4 text-gray-500 text-sm italic">
+             <div className="flex-1 overflow-y-auto">
+        <MessageList messages={messages} />
+      </div>
+            {isTyping && typingUser && typingUser !== username && (
+        <div className="absolute bottom-40 left-4 text-gray-500 text-sm italic">
           {typingUser} is typing...
         </div>)}
-            <MessageInput
-              currentUser={currentUser}
-              selectedAgent={selectedAgent}
-              setMessages={setMessages}
-              input={input}
-              setInput={setInput} setTypingUser={setTypingUser} setIsTyping={setIsTyping}
-              />
+            <div className=" bg-white sticky bottom-0">
+        <MessageInput
+          currentUser={currentUser}
+          selectedAgent={selectedAgent}
+          setMessages={setMessages}
+          input={input}
+          setInput={setInput}
+          setTypingUser={setTypingUser}
+          setIsTyping={setIsTyping}
+        />
+      </div>
+
             <button className="bg-red-500 text-white p-2 m-2 rounded" onClick={handleEndChat}>
               End Chat
             </button>

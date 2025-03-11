@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import backgroundImage from "../../assets/bgchat.jpg";
 
 const MessageList = ({ messages }) => {
     const messagesEndRef = useRef(null);

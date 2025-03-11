@@ -1,54 +1,35 @@
 import { useState, useEffect } from "react";
 import socket from "../../socket";
 
-const MessageInput = ({ agent, selectedUser, setMessages }) => {
-    const [typingUser, setTypingUser] = useState("");
-    const [isTyping, setIsTyping] = useState(false);
-    const [newMessage, setNewMessage] = useState("");
-
-  // Handle Input Change and Emit Typing Event
+const MessageInput = ({ agent, selectedUser, setMessages, newMessage, setNewMessage,setTypingUser, setIsTyping }) => {
+  let typingTimer = null;
   const handleInputChange = (e) => {
     setNewMessage(e.target.value);
+  
+    // Emit typing event
     socket.emit("typing", { user: agent });
-  };
-
-  // Debounce Typing Event
-  useEffect(() => {
-    let typingTimer;
-    if (newMessage.trim() === "") {
-      socket.emit("stopped-typing", { user: agent });
-    } else {
-      typingTimer = setTimeout(() => {
-        socket.emit("stopped-typing", { user: agent });
-      }, 600);
-    }
-    return () => clearTimeout(typingTimer);
-  }, [newMessage, agent]);
-
-  useEffect(() => {
-    if (!socket) {
-      console.log("Socket not available");
-      return;
-    }
-
-    socket.on("typing", (data) => {
-      console.log("Typing event from:", data.user.username);
-      setTypingUser(data.user.username);
+  
+    // ✅ Only update typing status if the sender is NOT the agent
+    if (selectedUser?.username !== agent.username) {
+      setTypingUser(agent.username);
       setIsTyping(true);
-    });
-
-    socket.on("stopped-typing", () => {
-      console.log("Stopped typing event");
-      setTypingUser("");
-      setIsTyping(false);
-    });
-
-    return () => {
-      socket.off("typing");
-      socket.off("stopped-typing");
-    };
-  }, [socket]);
-
+    }
+  
+    // Clear any existing timeout
+    if (typingTimer) clearTimeout(typingTimer);
+  
+    // Set a timeout to stop typing after 1.5s
+    typingTimer = setTimeout(() => {
+      socket.emit("stopped-typing", { user: agent });
+  
+      // ✅ Ensure only client's typing status is displayed
+      if (selectedUser?.username !== agent.username) {
+        setTypingUser("");
+        setIsTyping(false);
+      }
+    }, 1500);
+  };
+  
   // Send a message to a selected user
   const sendMessage = () => {
     if (!agent || !agent.username) {
@@ -79,11 +60,6 @@ const MessageInput = ({ agent, selectedUser, setMessages }) => {
 
 return (
 <>
-  {/* Typing Indicator */}
-  {isTyping && typingUser && (
-            <div className="p-2 text-sm text-gray-600">{typingUser} is typing...</div>
-          )}
-
           {/* Input Field */}
           <div className="flex border-t p-2">
             <input
@@ -94,11 +70,17 @@ return (
               placeholder="Type a message..."
             />
             <button
-              className="ml-2 bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800"
-              onClick={sendMessage}
-            >
-              Send
-            </button>
+      className="ml-2 bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800"
+      onClick={() => {
+        if (newMessage.trim()) {
+          sendMessage(newMessage);
+          setNewMessage("");
+        }
+      }}
+      disabled={!newMessage.trim()}
+    >
+      Send
+    </button>
           </div>
 </>
     )};

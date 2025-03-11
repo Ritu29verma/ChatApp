@@ -9,13 +9,6 @@ const MessageList = ({ messages }) => {
     }
   }, [messages]);
 
-
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
-
   return (
     <div className="flex flex-col md:h-full min-h-[calc(100vh-260px)]  flex-grow overflow-y-auto h-full p-2">
     {messages.length > 0 ? (
@@ -28,7 +21,7 @@ const MessageList = ({ messages }) => {
         </div>
       ))
       ) : (
-        <div className="flex justify-center items-center md:h-full min-h-[calc(100vh-300px)] p-4 bg-gray-100 rounded-lg text-center">
+        <div className="flex justify-center items-center md:h-full min-h-[calc(100vh-300px)] p-4 rounded-lg text-center">
         <p className="text-gray-600 italic text-lg">Start a conversation!</p>
         </div>
       )  }

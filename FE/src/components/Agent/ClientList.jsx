@@ -48,7 +48,7 @@ function ClientList({ selectedUser, setSelectedUser , onClose}) {
 
   return (
     <div
-        className={`bg-white shadow-lg rounded-lg p-4 transition-all md:w-1/3 h-full md:block overflow-y-auto ${
+        className={`bg-white min-h-[calc(100vh-100px)] shadow-lg rounded-lg p-4 transition-all md:w-1/3 h-full md:block overflow-y-auto ${
           selectedUser ? "hidden md:block" : "block w-full"
         }`}
       >

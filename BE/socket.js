@@ -70,6 +70,7 @@ export const chatSocket = () => {
     }
 
     socket.on("acceptChat", ({ agentUsername, clientUsername }) => {
+      console.log(`🟢 acceptChat Event Received | Agent: ${agentUsername}, Client: ${clientUsername}`);
       if (pendingChatRequests.has(clientUsername) && !pendingChatRequests.get(clientUsername)) {
         pendingChatRequests.set(clientUsername, true); 
       const clientEntry = [...onlineUsers.entries()].find(([_, user]) => user.username === clientUsername);
