@@ -36,19 +36,6 @@ const ChatWindow = ({ onClose }) => {
   const [isChatActive, setIsChatActive] = useState(false);
   const [showStartConversation, setShowStartConversation] = useState(false);
 
-  // useEffect(() => {
-  //   const storedUsername = sessionStorage.getItem("username");
-  
-  //   const registerClient = () => {
-  //     if (storedUsername) {
-  //       console.log("Re-registering client after refresh:", storedUsername);
-  //       socket.emit("registerClient", { username: storedUsername });
-  //     }
-  //   };
-  //   registerClient();
-    
-  // }, []);
-
   const handleLogout = () => {
     if (!currentUser) {
       console.log("Username not yet available, delaying logout.");
@@ -103,20 +90,7 @@ const ChatWindow = ({ onClose }) => {
         navigate("/");
       }
     }
-  }, [currentUser, navigate]);
-
-  // useEffect(() => {
-  //   if (!currentUser) {
-  //   const storedUser = sessionStorage.getItem("user");
-  //   const storedUsername =sessionStorage.getItem("username")
-  //   if (storedUser) {
-  //     setCurrentUser(storedUser);
-  //     setUsername(storedUsername);
-  //     setIsLoggedIn(true); // set isLoggedIn to true if user is in session storage
-  //   } else {
-  //     setTimeout(() => setShowLoginModal(true), 1000); // Show modal after 1 second
-  //   }}
-  // }, [currentUser]);
+  }, [currentUser, navigate]); 
 
   useEffect(() => {
     socket.on("receiveMessage", (message) => {

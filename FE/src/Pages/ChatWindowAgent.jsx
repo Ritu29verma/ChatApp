@@ -53,6 +53,16 @@ function AdminChatWindow({ onClose }) {
   }, []);
 
   useEffect(() => {
+    console.log("Selected User Updated:", selectedUser);
+  }, [selectedUser]);
+
+  useEffect(() => {
+    console.log("✅ Selected User useEffect Triggered:", selectedUser);
+    
+    if (!selectedUser || !selectedUser.id || !agent || !agent.id) {
+      console.warn("🚨 Missing required data: ", { selectedUser, agent });
+      return; // Exit early if any required value is missing
+    }
     if (selectedUser && agent) {
       console.log("Fetching chat history for:", {
         userId: selectedUser.id, // ✅ User first
@@ -130,7 +140,6 @@ function AdminChatWindow({ onClose }) {
   useEffect(() => {
     socket.on("newChatRequest", ({ clientUsername }) => {
       setChatRequests((prevRequests) => {
-        // Avoid adding duplicate requests
         if (!prevRequests.includes(clientUsername)) {
           return [...prevRequests, clientUsername];
         }
@@ -148,8 +157,8 @@ function AdminChatWindow({ onClose }) {
 
     socket.on("chatAccepted", ({ clientUsername }) => {
       setSelectedUser({ username: clientUsername });
-      setIsChatActive(true); // Mark the agent as busy
-      setAcceptedRequests((prev) => [...prev, clientUsername]); // Mark request as accepted
+      setIsChatActive(true);
+      setAcceptedRequests((prev) => [...prev, clientUsername]); 
       toast.success(`Connected with Client ${clientUsername}`);
     });
 
@@ -167,6 +176,7 @@ function AdminChatWindow({ onClose }) {
     };
   }, []);
 
+
   const handleAcceptChat = (clientUsername) => {
     socket.emit("acceptChat", { agentUsername : agent.username, clientUsername });
     setChatRequests((prev) => prev.filter((user) => user !== clientUsername));
@@ -174,6 +184,45 @@ function AdminChatWindow({ onClose }) {
     setSelectedUser({ username: clientUsername }); 
     setIsChatActive(true);
   };
+
+//   const handleAcceptChat = (clientUsername) => {
+//     console.log("Accept Chat Clicked for:", clientUsername);
+//     console.log("Agent Username:", agent?.username);
+
+//     if (!clientUsername || !agent?.username) {
+//         console.error("Error: Missing clientUsername or agent.username");
+//         return;
+//     }
+
+//     // Emit event to server
+//     socket.emit("acceptChat", { agentUsername: agent.username, clientUsername });
+//     console.log("Emitted acceptChat event:", { agentUsername: agent.username, clientUsername });
+
+//     // Update chat requests state
+//     setChatRequests((prev) => {
+//         console.log("Previous Chat Requests:", prev);
+//         const updatedRequests = prev.filter((user) => user !== clientUsername);
+//         console.log("Updated Chat Requests after filtering:", updatedRequests);
+//         return updatedRequests;
+//     });
+
+//     // Update accepted requests
+//     setAcceptedRequests((prev) => {
+//         console.log("Previous Accepted Requests:", prev);
+//         const newAcceptedRequests = [...prev, clientUsername];
+//         console.log("Updated Accepted Requests:", newAcceptedRequests);
+//         return newAcceptedRequests;
+//     });
+
+//     // Set selected user
+//     setSelectedUser({ username: clientUsername });
+//     console.log("Selected User Set:", { username: clientUsername });
+
+//     // Activate chat
+//     setIsChatActive(true);
+//     console.log("Chat is now active:", true);
+// };
+
 
   const handleDenyChat = (clientUsername) => {
     socket.emit("denyChat", { clientUsername });
@@ -204,7 +253,7 @@ function AdminChatWindow({ onClose }) {
     if (isChatActive && selectedUser) {
         console.log("🎉 Opening Chat Window for:", selectedUser);
     }
-}, [isChatActive, selectedUser]); // ✅ Watch both `isChatActive` and `selectedUser`
+}, [isChatActive, selectedUser]); 
 
 
   return (
@@ -225,14 +274,26 @@ function AdminChatWindow({ onClose }) {
       {selectedUser ? (
         <div className="bg-white max-h-[calc(100vh-100px)] flex-grow shadow-lg rounded-lg flex flex-col flex-1 w-full md:w-2/3">
          <ChatHeader selectedUser={selectedUser} onClose={onClose} setSelectedUser={setSelectedUser}/>
-          <MessageList messages={messages} />
-          {/* {isTyping && typingUser && typingUser !== agent.username && (
+         <div className="flex-1 overflow-y-auto">
+              <MessageList messages={messages} />
+            </div>
+          {isTyping && typingUser && typingUser !== agent.username && (
   <div className="absolute bottom-40 left-4 text-gray-500 text-sm italic">
     {typingUser} is typing...
   </div>
-    )} */}
+    )}
 
-          <MessageInput agent={agent} selectedUser={selectedUser} setMessages={setMessages} newMessage={newMessage} setNewMessage={setNewMessage} setTypingUser={setTypingUser} setIsTyping={setIsTyping}/>
+<div className=" bg-white sticky bottom-0">
+              <MessageInput
+                agent={agent}
+                selectedUser={selectedUser}
+                setMessages={setMessages}
+                newMessage={newMessage}
+                setNewMessage={setNewMessage}
+                setTypingUser={setTypingUser}
+                setIsTyping={setIsTyping}
+              />
+            </div>
           {selectedUser && (
          <button className="bg-red-500 text-white p-2 m-2 rounded" onClick={handleEndChat}>
          End Chat

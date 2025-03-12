@@ -100,7 +100,7 @@ export const chatSocket = () => {
       } else {
         console.log(`⚠️ Client ${clientUsername} not found for chat.`);
       }}
-    });
+    }); 
 
     socket.on("denyChat", ({ clientUsername }) => {
       console.log(`🚫 Agent denied chat request from ${clientUsername}`);

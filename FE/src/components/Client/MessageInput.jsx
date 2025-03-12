@@ -3,6 +3,7 @@ import socket from "../../socket";
 
 const MessageInput = ({ currentUser , selectedAgent, setMessages, input, setInput ,setTypingUser, setIsTyping }) => {
   let typingTimer = null;
+  
   const sendMessage = () => {
     if (input.trim() === "") return;
 

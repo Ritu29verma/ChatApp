@@ -11,6 +11,7 @@ const MessageList = ({ messages }) => {
 
       return (
         <div className="flex justify-center items-center w-full bg-gray-200">
+          {console.log("Messages Array: ", messages)}
           <div 
             className="w-10/12 flex-1 md:h-full min-h-[calc(100vh-260px)] overflow-y-auto p-4 relative bg-white bg-opacity-80" >
             {messages.length > 0 ? (
