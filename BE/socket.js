@@ -13,9 +13,9 @@ export const chatSocket = () => {
     console.log("🟢 A user connected:", socket.id);
 
     // Register clients
-    socket.on("registerClient", ({ username }) => {
-      console.log(`🔹 Registering Client: ${username}, Socket ID: ${socket.id}`);
-      onlineUsers.set(socket.id, { username, role: "user" });
+    socket.on("registerClient", ({ username , userId }) => {
+      console.log(`🔹 Registering Client: ${username},ID:${userId} Socket ID: ${socket.id}`);
+      onlineUsers.set(socket.id, { username, userId, role: "user" });
       console.log("📌 Current Online Users:", Array.from(onlineUsers.entries()));
       console.log("Current Online Agents:",Array.from(onlineAgents.entries()))
       io.emit("onlineUsers", Array.from(onlineUsers.values())); // Update users
@@ -24,9 +24,9 @@ export const chatSocket = () => {
     });
 
     // Register agents
-    socket.on("registerAgent", ({ username }) => {
-      console.log(`🔸 Registering Agent: ${username}, Socket ID: ${socket.id}`);
-      onlineAgents.set(socket.id, { username, role: "agent" });
+    socket.on("registerAgent", ({ username, agentId }) => {
+      console.log(`🔸 Registering Agent: ${username},ID:${agentId} Socket ID: ${socket.id}`);
+      onlineAgents.set(socket.id, { username, agentId , role: "agent" });
       console.log("📌 Current Online Users:", Array.from(onlineUsers.entries()));
       console.log("📌 Current Online Agents:", Array.from(onlineAgents.entries()));
       io.emit("onlineAgents", Array.from(onlineAgents.values())); // Update agents
@@ -74,8 +74,10 @@ export const chatSocket = () => {
       if (pendingChatRequests.has(clientUsername) && !pendingChatRequests.get(clientUsername)) {
         pendingChatRequests.set(clientUsername, true); 
       const clientEntry = [...onlineUsers.entries()].find(([_, user]) => user.username === clientUsername);
+      const agentObject = onlineAgents.get(socket.id);
+
       if (clientEntry) {
-        const [clientSocketId] = clientEntry;
+        const [clientSocketId, clientObject] = clientEntry;
 
          // ✅ Remove from pending requests if it was stored
          if (pendingChatRequests.has(clientUsername)) {
@@ -84,17 +86,20 @@ export const chatSocket = () => {
 
         // Store session correctly
         activeSessions.set(clientUsername, {
-          agent: agentUsername,
-          client: clientUsername,
+          agent: agentObject,
+          client: clientObject,
           agentSocketId: socket.id,
           clientSocketId: clientSocketId
         });
 
         console.log("✅ Chat Accepted - Session stored:", activeSessions.get(clientUsername));
+        if (!clientSocketId) {
+          console.log(`⚠️ Client Socket ID not found for ${clientUsername}`);
+          return;
+        }
 
-        // Notify both parties
-        io.to(clientSocketId).emit("chatAccepted", { agentUsername });
-        io.to(socket.id).emit("chatAccepted", { clientUsername });
+      io.to(clientSocketId).emit("chatAccepted", { agent: agentObject });
+      io.to(socket.id).emit("chatAccepted", { client: clientObject });
         console.log(`📢 Emitting chatRequestHandled for Client: ${clientUsername}, Agent: ${agentUsername}`);
        io.emit("chatRequestHandled", { clientUsername, agentUsername });
       } else {
@@ -123,16 +128,18 @@ export const chatSocket = () => {
     socket.on("endChat", ({ agentUsername, clientUsername }) => {
       console.log("End Chat requested by:", { agentUsername, clientUsername });
     
-      const session = activeSessions.get(clientUsername); // ✅ Find session by clientUsername
+      const session = activeSessions.get(clientUsername); 
     
       if (session) {
-        activeSessions.delete(clientUsername); // ✅ Delete session using clientUsername
-    
-        io.to([...onlineUsers.entries()].find(([_, u]) => u.username === session.client)?.[0])
-          .emit("chatEnded", { session });
-    
-        io.to([...onlineAgents.entries()].find(([_, a]) => a.username === session.agent)?.[0])
-          .emit("chatEnded", { session });
+        activeSessions.delete(clientUsername);
+
+        if (session.clientSocketId) {
+          io.to(session.clientSocketId).emit("chatEnded", { session });
+        }
+        if (session.agentSocketId) {
+          io.to(session.agentSocketId).emit("chatEnded", { session });
+        }
+        
     
         console.log("✅ Chat session ended successfully:", session);
       } else {
@@ -251,29 +258,29 @@ export const chatSocket = () => {
       io.emit("onlineAgents", Array.from(onlineAgents.values()));
     });
 
-    // Handle disconnect
-    socket.on("disconnect", () => {
-      console.log(`🔴 User with socket ID ${socket.id} disconnected`);
+   // Handle disconnect
+socket.on("disconnect", () => {
+  console.log(`🔴 User with socket ID ${socket.id} disconnected`);
 
-      onlineUsers.forEach((value, key) => {
-        if (key === socket.id) {
-          console.log(`Removing user: ${value.username} (Socket ID: ${socket.id})`);
-          onlineUsers.delete(key);
-        }
-      });
+  // Directly remove the user or agent from the maps using their socket ID
+  if (onlineUsers.has(socket.id)) {
+    console.log(`🗑️ Removing user: ${onlineUsers.get(socket.id).username} (Socket ID: ${socket.id})`);
+    onlineUsers.delete(socket.id);
+  }
 
-      onlineAgents.forEach((value, key) => {
-        if (key === socket.id) {
-          console.log(`Removing agent: ${value.username} (Socket ID: ${socket.id})`);
-          onlineAgents.delete(key);
-        }
-      });
+  if (onlineAgents.has(socket.id)) {
+    console.log(`🗑️ Removing agent: ${onlineAgents.get(socket.id).username} (Socket ID: ${socket.id})`);
+    onlineAgents.delete(socket.id);
+  }
 
-      console.log("📌 Updated Online Users:", Array.from(onlineUsers.values()));
-      console.log("📌 Updated Online Agents:", Array.from(onlineAgents.values()));
+  // Log updated lists
+  console.log("📌 Updated Online Users:", Array.from(onlineUsers.values()));
+  console.log("📌 Updated Online Agents:", Array.from(onlineAgents.values()));
 
-      io.emit("onlineUsers", Array.from(onlineUsers.values()));
-      io.emit("onlineAgents", Array.from(onlineAgents.values()));
-    });
+  // Emit updated lists to all clients
+  io.emit("onlineUsers", Array.from(onlineUsers.values()));
+  io.emit("onlineAgents", Array.from(onlineAgents.values()));
+});
+
   });
 };

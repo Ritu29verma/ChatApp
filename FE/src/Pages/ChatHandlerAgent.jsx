@@ -30,8 +30,9 @@ function ChatHandlerAgent() {
       sessionStorage.setItem("agent",JSON.stringify(agent));
       sessionStorage.setItem("phoneNumber", agent.phoneNumber);
       sessionStorage.setItem("username", agent.username);
-      console.log(agent.username);
-      socket.emit("registerAgent", { username: agent.username});
+      sessionStorage.setItem("id", agent.id);
+      console.log(agent.username , agent.id);
+      socket.emit("registerAgent", { username: agent.username , agentId: agent.id});
       toast.success("Login successful");
       navigate("/agent-chat", { state: { agent } });
   

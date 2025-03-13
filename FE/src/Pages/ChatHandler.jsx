@@ -26,7 +26,7 @@ function ChatHandler({ onClose }) {
         sessionStorage.setItem("username", user.username);
         sessionStorage.setItem("id", user.id);
   
-        socket.emit("registerClient", { username: user.username });
+        socket.emit("registerClient", { username: user.username, userId: user.id });
         socket.emit("newChatRequest", { username: user.username });
         
         toast.success("Login successful");

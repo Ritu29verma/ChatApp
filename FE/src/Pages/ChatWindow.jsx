@@ -108,17 +108,30 @@ const ChatWindow = ({ onClose }) => {
   }, [selectedAgent]);
 
   useEffect(() => {
+    const storedUserId = sessionStorage.getItem("id");
+    if (username && storedUserId) {
+      socket.emit("registerClient", { username, userId:storedUserId });
+
+      // Prevent duplicate chat requests
+      if (!hasRequestedChat.current) {
+        socket.emit("newChatRequest", { clientUsername: username });
+        hasRequestedChat.current = true;
+      }
+    }
+  }, [username]);
+
+  useEffect(() => {
     console.log("✅ Selected Agent useEffect Triggered:", selectedAgent);
     
-    if (!selectedAgent || !selectedAgent.id || !currentUser || !currentUser.id) {
+    if (!selectedAgent || !selectedAgent.agentId || !currentUser || !currentUser.id) {
       console.warn("🚨 Missing required data: ", { selectedAgent, currentUser });
       return; // Exit early if any required value is missing
     }
-    console.log("📥 Fetching chat history for:", { userId: currentUser.id, agentId: selectedAgent.id });
+    console.log("📥 Fetching chat history for:", { userId: currentUser.id, agentId: selectedAgent.agentId });
     const loadChatHistory = async () => { 
       setLoading(true);
       try {
-        let history = await fetchChatHistory(currentUser.id, selectedAgent.id);
+        let history = await fetchChatHistory(currentUser.id, selectedAgent.agentId);
         console.log("✅ Fetched history:", history);
   
         if (!Array.isArray(history)) history = []; // Ensure history is an array
@@ -140,34 +153,24 @@ const ChatWindow = ({ onClose }) => {
     loadChatHistory();
   }, [selectedAgent, currentUser]);
 
-  useEffect(() => {
-    if (username) {
-      socket.emit("registerClient", { username });
-
-      // Prevent duplicate chat requests
-      if (!hasRequestedChat.current) {
-        socket.emit("newChatRequest", { clientUsername: username });
-        hasRequestedChat.current = true;
-      }
-    }
-  }, [username]);
-
 
   useEffect(() => {
     socket.on("newChatRequest", () => {
       setSearchingForAgent(true);
     });
 
-    socket.on("chatAccepted", ({ agentUsername }) => {
+    socket.on("chatAccepted", ({ agent }) => {
+      console.log("✅ Chat Accepted on Client Side, Received Agent Object:", agent);
       setSearchingForAgent(false);
       setIsChatActive(true);
       setShowStartConversation(false);
-      setSelectedAgent({ username: agentUsername });
-      toast.success(`Connected with Agent ${agentUsername}`);
+      setSelectedAgent(agent);
+      toast.success(`Connected with Agent ${agent.username}`);
     });
 
     socket.on("chatEnded", ({ session }) => {
-      toast.success(`Chat with ${session.agent} ended`);
+      console.log("📩 chatEnded Event Received:", session);
+      toast.success(`Chat with ${session.agent.username} ended`);
       setSelectedAgent(null);
       setIsChatActive(false);
       setSearchingForAgent(false);
@@ -272,7 +275,7 @@ const ChatWindow = ({ onClose }) => {
               setSelectedAgent={setSelectedAgent}
               onClose={onClose}
             />
-             <div className="flex-1 overflow-y-auto">
+             <div className="flex-1 overflow-y-auto pb-5">
         <MessageList messages={messages} />
       </div>
             {isTyping && typingUser && typingUser !== username && (

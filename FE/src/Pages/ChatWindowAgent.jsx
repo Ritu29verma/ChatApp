@@ -31,11 +31,11 @@ function AdminChatWindow({ onClose }) {
 
   useEffect(() => {
   const storedUsername = sessionStorage.getItem("username");
-
+  const storedagentId = sessionStorage.getItem("id");
   const registerAgent = () => {
-    if (storedUsername) {
-      console.log("Re-registering agent after refresh:", storedUsername);
-      socket.emit("registerAgent", { username: storedUsername });
+    if (storedagentId && storedUsername) {
+      console.log("Re-registering agent after refresh:",storedUsername, storedagentId);
+      socket.emit("registerAgent", { username: storedUsername , agentId : storedagentId });
     }
   };
   registerAgent();
@@ -59,34 +59,26 @@ function AdminChatWindow({ onClose }) {
   useEffect(() => {
     console.log("✅ Selected User useEffect Triggered:", selectedUser);
     
-    if (!selectedUser || !selectedUser.id || !agent || !agent.id) {
+    if (!selectedUser || !selectedUser.userId || !agent || !agent.id) {
       console.warn("🚨 Missing required data: ", { selectedUser, agent });
-      return; // Exit early if any required value is missing
+      return; 
     }
-    if (selectedUser && agent) {
-      console.log("Fetching chat history for:", {
-        userId: selectedUser.id, // ✅ User first
-        agentId: agent.id, // ✅ Agent second
-      });
-  
+      console.log("Fetching chat history for:", { userId: selectedUser.userId,  agentId: agent.id  });
       const loadChatHistory = async () => {
         setLoading(true);
         try {
-          let history = await fetchChatHistory(selectedUser.id, agent.id); // ✅ Fix order
+          let history = await fetchChatHistory(selectedUser.userId, agent.id); 
   
           console.log("Fetched history:", history);
   
-          if (!Array.isArray(history)) {
-            history = []; // ✅ Ensure history is an array
-          }
+          if (!Array.isArray(history))  history = []; 
   
-          // ✅ Correct sender names & timestamps
           const formattedMessages = history.map((msg) => ({
             sender:
-              msg.senderType === "user" ? selectedUser.username : agent.username,
+            msg.senderType === "user" ? selectedUser.username : agent.username,
             role: msg.senderType,
             text: msg.message,
-            timestamp: msg.createdAt, // ✅ Use correct timestamp
+            timestamp: msg.createdAt, 
           }));
   
           setMessages(formattedMessages);
@@ -97,7 +89,6 @@ function AdminChatWindow({ onClose }) {
       };
   
       loadChatHistory();
-    }
   }, [selectedUser, agent]);
 
     // Debounce Typing Event
@@ -155,18 +146,24 @@ function AdminChatWindow({ onClose }) {
       }, 500);
     });  
 
-    socket.on("chatAccepted", ({ clientUsername }) => {
-      setSelectedUser({ username: clientUsername });
+    socket.on("chatAccepted", ({ client }) => {
+      console.log("✅ Chat Accepted, Received Client Object:", client);
+      setSelectedUser(client);
       setIsChatActive(true);
-      setAcceptedRequests((prev) => [...prev, clientUsername]); 
-      toast.success(`Connected with Client ${clientUsername}`);
+      setAcceptedRequests((prev) => [...prev, client.username]); 
+      toast.success(`Connected with Client ${client.username}`);
     });
 
     socket.on("chatEnded", ({ session }) => {
-      toast.success(`Chat with ${session.client} ended`);
+      if (!session || !session.client) {
+        console.error("⚠️ chatEnded event received, but session or client is missing:", session);
+        return;
+      }
+      toast.success(`Chat with ${session.client.username} ended`); 
       setSelectedUser(null);
       setIsChatActive(false);
     });
+    
 
     return () => {
       socket.off("newChatRequest");
@@ -177,52 +174,20 @@ function AdminChatWindow({ onClose }) {
   }, []);
 
 
-  const handleAcceptChat = (clientUsername) => {
-    socket.emit("acceptChat", { agentUsername : agent.username, clientUsername });
-    setChatRequests((prev) => prev.filter((user) => user !== clientUsername));
-    setAcceptedRequests((prev) => [...prev, clientUsername]);
-    setSelectedUser({ username: clientUsername }); 
+  const handleAcceptChat = (client) => {
+    console.log("📢 handleAcceptChat called with client:", client);
+    if (!client) {
+        console.warn("⚠️ Client object is missing or invalid:", client);
+        return;
+    }
+
+    socket.emit("acceptChat", { agentUsername: agent.username, clientUsername: client});
+
+    setChatRequests((prev) => prev.filter((user) => user !== client));
+    setAcceptedRequests((prev) => [...prev, client]);
+    setSelectedUser(client); 
     setIsChatActive(true);
-  };
-
-//   const handleAcceptChat = (clientUsername) => {
-//     console.log("Accept Chat Clicked for:", clientUsername);
-//     console.log("Agent Username:", agent?.username);
-
-//     if (!clientUsername || !agent?.username) {
-//         console.error("Error: Missing clientUsername or agent.username");
-//         return;
-//     }
-
-//     // Emit event to server
-//     socket.emit("acceptChat", { agentUsername: agent.username, clientUsername });
-//     console.log("Emitted acceptChat event:", { agentUsername: agent.username, clientUsername });
-
-//     // Update chat requests state
-//     setChatRequests((prev) => {
-//         console.log("Previous Chat Requests:", prev);
-//         const updatedRequests = prev.filter((user) => user !== clientUsername);
-//         console.log("Updated Chat Requests after filtering:", updatedRequests);
-//         return updatedRequests;
-//     });
-
-//     // Update accepted requests
-//     setAcceptedRequests((prev) => {
-//         console.log("Previous Accepted Requests:", prev);
-//         const newAcceptedRequests = [...prev, clientUsername];
-//         console.log("Updated Accepted Requests:", newAcceptedRequests);
-//         return newAcceptedRequests;
-//     });
-
-//     // Set selected user
-//     setSelectedUser({ username: clientUsername });
-//     console.log("Selected User Set:", { username: clientUsername });
-
-//     // Activate chat
-//     setIsChatActive(true);
-//     console.log("Chat is now active:", true);
-// };
-
+};
 
   const handleDenyChat = (clientUsername) => {
     socket.emit("denyChat", { clientUsername });
@@ -268,13 +233,13 @@ function AdminChatWindow({ onClose }) {
             onDeny={handleDenyChat} 
           />
         )}
-      <ClientList selectedUser={selectedUser} setSelectedUser={setSelectedUser} onClose={onClose} />
+      <ClientList selectedUser={selectedUser} setSelectedUser={setSelectedUser} onClose={onClose} agent={agent} />
 
       {/* Right Section: Chat Window (Takes Full Screen on Mobile) */}
       {selectedUser ? (
         <div className="bg-white max-h-[calc(100vh-100px)] flex-grow shadow-lg rounded-lg flex flex-col flex-1 w-full md:w-2/3">
          <ChatHeader selectedUser={selectedUser} onClose={onClose} setSelectedUser={setSelectedUser}/>
-         <div className="flex-1 overflow-y-auto">
+         <div className="flex-1 overflow-y-auto pb-5">
               <MessageList messages={messages} />
             </div>
           {isTyping && typingUser && typingUser !== agent.username && (

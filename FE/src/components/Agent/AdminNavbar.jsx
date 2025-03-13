@@ -14,6 +14,7 @@ const AdminNavbar = ({ agent }) => {
     sessionStorage.removeItem("phoneNumber");
     sessionStorage.removeItem("username");
     sessionStorage.removeItem("agent");
+    sessionStorage.removeItem("id");
     navigate("/login");
   };
 

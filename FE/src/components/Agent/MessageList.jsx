@@ -10,7 +10,7 @@ const MessageList = ({ messages }) => {
   }, [messages]);
 
   return (
-    <div className="flex flex-col flex-grow overflow-y-auto h-full p-2 bg-white">
+    <div className="flex flex-col flex-grow md:h-full min-h-[calc(100vh-260px)] overflow-y-auto h-full p-2">
       {/* Debugging: Check if messages exist */}
       {console.log("Messages Array: ", messages)}
 
@@ -18,7 +18,7 @@ const MessageList = ({ messages }) => {
         messages.map((msg, index) => (
           <div
             key={index}
-            className={`p-2 ${msg.role === "user" ? "text-right" : "text-left"}`}
+            className={`p-2 ${msg.role === "user" ? "text-left" : "text-right"}`}
           >
             <span className="font-semibold">{msg.sender}:</span> {msg.text}
             <div className="text-xs text-gray-500">
@@ -27,7 +27,7 @@ const MessageList = ({ messages }) => {
           </div>
         ))
       ) : (
-        <div className="flex justify-center items-center min-h-[calc(100vh-300px)] p-4 rounded-lg text-center">
+        <div className="flex justify-center items-center min-h-[calc(100vh-300px)] md:h-full p-4 rounded-lg text-center">
           <p className="text-gray-600 italic text-lg">Start a conversation!</p>
         </div>
       )}
