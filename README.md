@@ -21,8 +21,9 @@ A full-stack real-time chat application built using **React**, **Node.js**, and 
 | **Session tracking**           | Stores username and session in `sessionStorage`                  |
 | **Online users list**          | Backend tracks all connected users and notifies agents           |
 | **Chat request system**        | Clients send requests; agents accept and start conversations     |
+| **End Call System**            | Anyone from client or Agent side can End the convo by clicking on End Chat Button    |
 | **Logout logic**               | Proper session cleanup and real-time updates to agent dashboards |
-| **Modular chat UI components** | Separate chat interfaces for guest, user, and agents             |
+| **Modular chat UI components** | Separate chat interfaces for user, and agents                    |
 | **Live chat notifications**    | Agents receive new request alerts as modals                      |
 
 ---
@@ -35,27 +36,6 @@ A full-stack real-time chat application built using **React**, **Node.js**, and 
 * **Utilities:** Nodemon, Logger, UUID for IDs
 * **Database:** MY SQL
 ---
-
-## 📁 Project Structure (Example)
-
-```
-/client
-  /components
-    ChatWindow.jsx
-    GuestChatWindow.jsx
-    AgentChatWindow.jsx
-    ChatRequestModal.jsx
-  /utils
-    socket.js
-    helpers.js
-  App.jsx
-  index.js
-
-/server
-  index.js
-  socketHandlers.js
-  utils/onlineUsers.js
-```
 
 ---
 
